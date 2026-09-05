@@ -7,9 +7,9 @@ from sqlalchemy import select
 from app.models.category import Category
 from app.repositories.base_repository import BaseRepository
 
-
 class CategoryRepository(BaseRepository[Category]):
     """Repository for category operations."""
+    model = Category
 
     def get_by_name(self, name: str) -> Category | None:
         """Return category by name."""
