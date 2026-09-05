@@ -1,0 +1,21 @@
+# Database
+SQLAlchemy>=2.0
+alembic>=1.16
+
+# Reports
+reportlab>=4.4
+
+# Excel
+openpyxl>=3.1
+
+# Images
+Pillow>=11.0
+
+# Barcode
+python-barcode>=0.16
+
+# QR Code
+qrcode[pil]>=8.2
+
+# Environment
+python-dotenv>=1.1

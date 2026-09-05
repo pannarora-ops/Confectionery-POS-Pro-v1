@@ -1,0 +1,6 @@
+-r base.txt
+
+kivy==2.3.1
+
+# UI framework version will be finalized later
+# kivymd==?

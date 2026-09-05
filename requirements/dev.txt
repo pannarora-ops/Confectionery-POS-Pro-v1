@@ -1,0 +1,5 @@
+-r base.txt
+
+pytest>=8.4
+black>=25.1
+isort>=6.0
