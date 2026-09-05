@@ -4,9 +4,8 @@ from app.models.product import Product
 from app.repositories.base_repository import BaseRepository
 
 class ProductRepository(BaseRepository[Product]):
-    model = Product
-#class ProductRepository(BaseRepository[Product]):
     """Repository for product operations."""
+    model = Product
 
     def get_by_sku(self, sku: str) -> Product | None:
         statement = select(Product).where(Product.sku == sku)

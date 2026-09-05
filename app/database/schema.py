@@ -5,9 +5,10 @@ Database schema initialization.
 from app.database.base import Base
 from app.database.connection import engine
 
+
 # Import all models here
 from app.models import Category, Product
-
+from app.models import StockTransaction
 
 def create_database() -> None:
     """

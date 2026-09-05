@@ -25,3 +25,10 @@ class CategoryNotFoundError(POSException):
 
 class ProductNotFoundError(POSException):
     """Raised when product is not found."""
+
+class ProductNotFoundError(Exception):
+    """Raised when product does not exist."""
+
+
+class InsufficientStockError(Exception):
+    """Raised when stock is insufficient."""

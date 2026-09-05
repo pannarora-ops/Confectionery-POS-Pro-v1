@@ -1,0 +1,1 @@
+from app.validators.inventory_validator import InventoryValidator
