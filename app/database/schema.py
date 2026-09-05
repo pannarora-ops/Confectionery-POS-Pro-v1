@@ -9,6 +9,7 @@ from app.database.connection import engine
 # Import all models here
 from app.models import Category, Product
 from app.models import StockTransaction
+from app.models import Supplier
 
 def create_database() -> None:
     """
