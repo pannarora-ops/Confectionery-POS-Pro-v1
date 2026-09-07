@@ -5,16 +5,25 @@ Database schema initialization.
 from app.database.base import Base
 from app.database.connection import engine
 
+# Import ALL models so SQLAlchemy registers them
+from app.models import (
+    Category,
+    Customer,
+    CustomerLedger,
+    Payment,
+    Product,
+    Purchase,
+    PurchaseItem,
+    Sale,
+    SaleItem,
+    StockTransaction,
+    Supplier,
+    SupplierLedger,
+)
 
-# Import all models here
-from app.models import Category, Product
-from app.models import StockTransaction
-from app.models import Supplier
 
 def create_database() -> None:
-    """
-    Create all database tables.
-    """
+    """Create all database tables."""
     Base.metadata.create_all(bind=engine)
 
 

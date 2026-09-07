@@ -1,34 +1,31 @@
 """
-Supplier model.
+Customer model.
 """
 
 from __future__ import annotations
 
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
 
 from app.models.base_model import BaseModel
 
 
-class Supplier(BaseModel):
-    """Supplier master."""
+class Customer(BaseModel):
+    """Customer master."""
 
-    __tablename__ = "suppliers"
+    __tablename__ = "customers"
 
     name: Mapped[str] = mapped_column(
-        String(150),
-        nullable=False,
-        unique=True,
-    )
-
-    contact_person: Mapped[str | None] = mapped_column(
         String(100),
-        nullable=True,
+        nullable=False,
     )
 
-    phone: Mapped[str | None] = mapped_column(
-        String(20),
-        nullable=True,
+    phone: Mapped[str] = mapped_column(
+        String(15),
+        unique=True,
+        nullable=False,
     )
 
     email: Mapped[str | None] = mapped_column(
@@ -37,12 +34,12 @@ class Supplier(BaseModel):
     )
 
     address: Mapped[str | None] = mapped_column(
-        String(300),
+        String(255),
         nullable=True,
     )
 
     gst_number: Mapped[str | None] = mapped_column(
-        String(30),
+        String(20),
         nullable=True,
     )
 
@@ -50,26 +47,32 @@ class Supplier(BaseModel):
     # Relationships
     # ---------------------------------
 
-    purchases = relationship(
-        "Purchase",
-        back_populates="supplier",
+    sales = relationship(
+        "Sale",
+        back_populates="customer",
         cascade="all, delete-orphan",
     )
 
     payments = relationship(
         "Payment",
-        back_populates="supplier",
+        back_populates="customer",
         cascade="all, delete-orphan",
     )
 
     ledger_entries = relationship(
-        "SupplierLedger",
-        back_populates="supplier",
+        "CustomerLedger",
+        back_populates="customer",
+        cascade="all, delete-orphan",
+    )
+
+    loyalty_entries = relationship(
+        "LoyaltyPoint",
+        back_populates="customer",
         cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
         return (
-            f"<Supplier(id={self.id}, "
+            f"<Customer(id={self.id}, "
             f"name='{self.name}')>"
         )

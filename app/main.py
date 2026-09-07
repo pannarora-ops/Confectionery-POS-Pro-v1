@@ -12,18 +12,10 @@ from app.ui.login_window import LoginWindow
 
 
 def main() -> int:
-    """
-    Start application.
-    """
-
     app = QApplication(sys.argv)
 
     app.setApplicationName(
         "Confectionery POS Pro"
-    )
-
-    app.setOrganizationName(
-        "Confectionery POS"
     )
 
     window = LoginWindow()
