@@ -1,71 +1,215 @@
 """
-Business logic for Product.
+Product Service
+Commercial POS Version
 """
+
+from __future__ import annotations
 
 from decimal import Decimal
 
-from app.exceptions.custom_exceptions import (
-    CategoryNotFoundError,
-    DuplicateSKUError,
-)
+from sqlalchemy.orm import Session
+
 from app.models.product import Product
-from app.repositories.category_repository import CategoryRepository
 from app.repositories.product_repository import ProductRepository
-from app.services.base_service import BaseService
-from app.validators.product_validator import ProductValidator
 
 
-class ProductService(BaseService):
-    """Service for product operations."""
+class ProductService:
 
-    def __init__(self, session):
-        super().__init__(session)
-        self.product_repository = ProductRepository(session)
-        self.category_repository = CategoryRepository(session)
+    def __init__(self, session: Session):
 
-    def create_product(
-        self,
-        name: str,
-        sku: str,
-        purchase_price: Decimal,
-        selling_price: Decimal,
-        category_id: int,
-        description: str | None = None,
-        barcode: str | None = None,
-        gst_percent: Decimal = Decimal("0.00"),
-        unit: str = "pcs",
-        min_stock: int = 0,
-    ) -> Product:
-        """Create a new product."""
+        self.session = session
+        self.repo = ProductRepository(session)
 
-        ProductValidator.validate_name(name)
-        ProductValidator.validate_sku(sku)
-        ProductValidator.validate_price(purchase_price)
-        ProductValidator.validate_price(selling_price)
+    # -------------------------------------------------
+    # Product Create
+    # -------------------------------------------------
 
-        if self.product_repository.exists(sku):
-            raise DuplicateSKUError(
-                f"SKU '{sku}' already exists."
+    def create(self, **data):
+
+        # Auto Product Number
+
+        if not data.get("product_no"):
+
+            data["product_no"] = (
+                self.repo.generate_product_no()
             )
 
-        category = self.category_repository.get(category_id)
+        # SKU Validation
 
-        if category is None:
-            raise CategoryNotFoundError(
-                f"Category ID {category_id} not found."
+        if self.repo.sku_exists(data["sku"]):
+
+            raise ValueError(
+                "SKU already exists."
             )
 
-        product = Product(
-            name=name.strip(),
-            sku=sku.strip().upper(),
-            barcode=barcode,
-            description=description,
-            category_id=category_id,
-            purchase_price=purchase_price,
-            selling_price=selling_price,
-            gst_percent=gst_percent,
-            unit=unit,
-            min_stock=min_stock,
+        # Barcode Validation
+
+        barcode = data.get("barcode")
+
+        if barcode:
+
+            if self.repo.barcode_exists(barcode):
+
+                raise ValueError(
+                    "Barcode already exists."
+                )
+
+        # Default Prices
+
+        data.setdefault(
+            "purchase_price",
+            Decimal("0.00"),
         )
 
-        return self.product_repository.add(product)
+        data.setdefault(
+            "selling_price",
+            Decimal("0.00"),
+        )
+
+        data.setdefault(
+            "mrp",
+            Decimal("0.00"),
+        )
+
+        data.setdefault(
+            "gst_percent",
+            Decimal("0.00"),
+        )
+
+        data.setdefault(
+            "gst_type",
+            "Exclusive",
+        )
+
+        data.setdefault(
+            "conversion_factor",
+            1,
+        )
+
+        data.setdefault(
+            "active",
+            True,
+        )
+
+        product = Product(**data)
+
+        self.repo.create(product)
+
+        self.session.commit()
+
+        return product
+
+    # -------------------------------------------------
+    # Product Update
+    # -------------------------------------------------
+
+    def update(
+        self,
+        product_id: int,
+        **data,
+    ):
+
+        product = self.repo.get(product_id)
+
+        if not product:
+
+            raise ValueError(
+                "Product not found."
+            )
+
+        sku = data.get("sku")
+
+        if sku:
+
+            if self.repo.sku_exists(
+                sku,
+                exclude_id=product.id,
+            ):
+
+                raise ValueError(
+                    "SKU already exists."
+                )
+
+        barcode = data.get("barcode")
+
+        if barcode:
+
+            if self.repo.barcode_exists(
+                barcode,
+                exclude_id=product.id,
+            ):
+
+                raise ValueError(
+                    "Barcode already exists."
+                )
+
+        for key, value in data.items():
+
+            setattr(
+                product,
+                key,
+                value,
+            )
+
+        self.repo.update()
+
+        self.session.commit()
+
+        return product
+
+    # -------------------------------------------------
+    # Delete
+    # -------------------------------------------------
+
+    def delete(
+        self,
+        product_id: int,
+    ):
+
+        product = self.repo.get(product_id)
+
+        if not product:
+
+            return
+
+        self.repo.delete(product)
+
+        self.session.commit()
+
+    # -------------------------------------------------
+    # Listing
+    # -------------------------------------------------
+
+    def get(
+        self,
+        product_id: int,
+    ):
+
+        return self.repo.get(product_id)
+
+    def get_all(self):
+
+        return self.repo.get_all()
+
+    def get_active(self):
+
+        return self.repo.get_active()
+
+    # -------------------------------------------------
+    # Search
+    # -------------------------------------------------
+
+    def search(
+        self,
+        text: str,
+    ):
+
+        return self.repo.search(text)
+
+    # -------------------------------------------------
+    # Stock
+    # -------------------------------------------------
+
+    def low_stock(self):
+
+        return self.repo.low_stock_products()

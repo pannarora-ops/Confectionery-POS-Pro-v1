@@ -1,68 +1,172 @@
 """
-Stock transaction model.
+Stock Transaction Model
+Commercial POS Version
 """
 
-from decimal import Decimal
-from enum import Enum
+from __future__ import annotations
 
-from sqlalchemy import Enum as SqlEnum
-from sqlalchemy import ForeignKey, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from decimal import Decimal
+
+from sqlalchemy import (
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+)
+
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from app.models.base_model import BaseModel
 
 
-class StockTransactionType(str, Enum):
-    """Types of stock transactions."""
-
-    STOCK_IN = "STOCK_IN"
-    STOCK_OUT = "STOCK_OUT"
-    PURCHASE = "PURCHASE"
-    SALE = "SALE"
-    RETURN_IN = "RETURN_IN"
-    RETURN_OUT = "RETURN_OUT"
-    ADJUSTMENT = "ADJUSTMENT"
-
-
 class StockTransaction(BaseModel):
-    """Inventory stock movement."""
+    """Stock Movement History"""
 
     __tablename__ = "stock_transactions"
+
+    # -------------------------------------------------
+    # Product
+    # -------------------------------------------------
 
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id"),
         nullable=False,
-    )
-
-    transaction_type: Mapped[StockTransactionType] = mapped_column(
-        SqlEnum(StockTransactionType),
-        nullable=False,
-    )
-
-    quantity: Mapped[Decimal] = mapped_column(
-        Numeric(10, 3),
-        nullable=False,
-    )
-
-    reference: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-    )
-
-    remarks: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
+        index=True,
     )
 
     product = relationship(
         "Product",
-        backref="stock_transactions",
+        back_populates="stock_transactions",
     )
 
-    def __repr__(self) -> str:
+    # -------------------------------------------------
+    # Transaction
+    # -------------------------------------------------
+
+    transaction_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        index=True,
+    )
+
+    # OPENING
+    # PURCHASE
+    # SALE
+    # PURCHASE_RETURN
+    # SALES_RETURN
+    # ADJUSTMENT
+    # DAMAGE
+    # EXPIRED
+
+    # -------------------------------------------------
+    # Quantity
+    # -------------------------------------------------
+
+    quantity: Mapped[Decimal] = mapped_column(
+        Numeric(14,3),
+        nullable=False,
+    )
+
+    # -------------------------------------------------
+    # Units
+    # -------------------------------------------------
+
+    primary_unit: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+    )
+
+    secondary_unit: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )
+
+    conversion_factor: Mapped[Decimal] = mapped_column(
+        Numeric(12,4),
+        default=Decimal("1"),
+    )
+
+    # -------------------------------------------------
+    # Rates
+    # -------------------------------------------------
+
+    purchase_rate: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=Decimal("0"),
+    )
+
+    sale_rate: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=Decimal("0"),
+    )
+
+    mrp: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=Decimal("0"),
+    )
+
+    # -------------------------------------------------
+    # Batch
+    # -------------------------------------------------
+
+    batch_no: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    serial_no: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    expiry_date: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+
+    # -------------------------------------------------
+    # Reference
+    # -------------------------------------------------
+
+    reference_type: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )
+
+    # PURCHASE
+    # SALE
+    # ADJUSTMENT
+
+    reference_id: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
+
+    reference_no: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
+    # -------------------------------------------------
+    # Remarks
+    # -------------------------------------------------
+
+    remarks: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # -------------------------------------------------
+
+    def __repr__(self):
+
         return (
             f"<StockTransaction("
-            f"product_id={self.product_id}, "
-            f"type={self.transaction_type}, "
+            f"id={self.id}, "
+            f"product={self.product_id}, "
+            f"type='{self.transaction_type}', "
             f"qty={self.quantity})>"
         )

@@ -1,43 +1,149 @@
 """
-Sale item model.
+Sale Item Model
 """
+
+from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Numeric
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+)
 
-from app.models.base_model import BaseModel
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
+
+from app.database.base import Base
 
 
-class SaleItem(BaseModel):
-    """Sale line item."""
-
+class SaleItem(Base):
     __tablename__ = "sale_items"
 
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
     sale_id: Mapped[int] = mapped_column(
-        ForeignKey("sales.id"),
+        ForeignKey("sales.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id"),
         nullable=False,
+        index=True,
     )
 
-    quantity: Mapped[Decimal] = mapped_column(
-        Numeric(10, 3),
+    batch_id: Mapped[int] = mapped_column(
+        ForeignKey("batches.id"),
+        nullable=False,
+        index=True,
+    )
+
+    product_name: Mapped[str] = mapped_column(
+        String(200),
         nullable=False,
     )
 
-    rate: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2),
+    product_code: Mapped[str] = mapped_column(
+        String(50),
         nullable=False,
+    )
+
+    barcode: Mapped[str | None] = mapped_column(
+        String(100),
+    )
+
+    batch_no: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    expiry_date: Mapped[str | None] = mapped_column(
+        String(20),
+    )
+
+    qty: Mapped[Decimal] = mapped_column(
+        Numeric(12,3),
+        default=0,
+    )
+
+    free_qty: Mapped[Decimal] = mapped_column(
+        Numeric(12,3),
+        default=0,
+    )
+
+    unit: Mapped[str] = mapped_column(
+        String(20),
+        default="PCS",
+    )
+
+    cost_price: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    sale_price: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    discount_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5,2),
+        default=0,
+    )
+
+    discount_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    taxable_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
     )
 
     gst_percent: Mapped[Decimal] = mapped_column(
-        Numeric(5, 2),
-        nullable=False,
+        Numeric(5,2),
+        default=0,
+    )
+
+    cgst_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    sgst_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    igst_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    line_total: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    profit_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    margin_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5,2),
         default=0,
     )
 
@@ -46,24 +152,10 @@ class SaleItem(BaseModel):
         back_populates="items",
     )
 
-    product = relationship("Product")
+    product = relationship(
+        "Product",
+    )
 
-    @property
-    def amount(self) -> Decimal:
-        return self.quantity * self.rate
-
-    @property
-    def gst_amount(self) -> Decimal:
-        return (
-            self.amount * self.gst_percent
-        ) / Decimal("100")
-
-    @property
-    def total(self) -> Decimal:
-        return self.amount + self.gst_amount
-
-    def __repr__(self) -> str:
-        return (
-            f"<SaleItem(product={self.product_id}, "
-            f"qty={self.quantity})>"
-        )
+    batch = relationship(
+        "Batch",
+    )

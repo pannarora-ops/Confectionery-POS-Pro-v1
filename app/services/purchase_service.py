@@ -1,171 +1,159 @@
 """
-Purchase service.
+Purchase Service
+Commercial POS Version
 """
+
+from __future__ import annotations
 
 from decimal import Decimal
 
-from app.exceptions.custom_exceptions import (
-    DuplicateInvoiceError,
-    ProductNotFoundError,
-    SupplierNotFoundError,
-)
+from sqlalchemy.orm import Session
+
+from app.models.batch import Batch
 from app.models.purchase import Purchase
 from app.models.purchase_item import PurchaseItem
-from app.models.stock_transaction import (
-    StockTransaction,
-    StockTransactionType,
-)
-from app.repositories.product_repository import (
-    ProductRepository,
-)
-from app.repositories.purchase_repository import (
-    PurchaseRepository,
-)
-from app.repositories.supplier_repository import (
-    SupplierRepository,
-)
-from app.services.ledger_service import LedgerService
+from app.repositories.purchase_repository import PurchaseRepository
+from app.services.stock_service import StockService
 
 
 class PurchaseService:
-    """Business logic for purchases."""
 
-    def __init__(self, session):
+    def __init__(self, session: Session):
+
         self.session = session
 
-        self.purchase_repository = PurchaseRepository(session)
-        self.product_repository = ProductRepository(session)
-        self.supplier_repository = SupplierRepository(session)
+        self.repo = PurchaseRepository(session)
 
-        self.ledger_service = LedgerService(session)
+        self.stock = StockService(session)
 
-    def create_purchase(
+    # -------------------------------------------------
+    # Create Purchase
+    # -------------------------------------------------
+
+    def create(
         self,
-        invoice_number: str,
-        supplier_id: int,
+        purchase: Purchase,
         items: list[dict],
-        remarks: str | None = None,
-    ) -> Purchase:
-        """Create purchase invoice."""
+    ):
 
-        # ---------------------------------
-        # Duplicate Invoice
-        # ---------------------------------
+        if not purchase.purchase_no:
 
-        if self.purchase_repository.find_by_invoice(
-            invoice_number
-        ):
-            raise DuplicateInvoiceError(
-                f"Invoice '{invoice_number}' already exists."
+            purchase.purchase_no = (
+                self.repo.generate_purchase_no()
             )
 
-        # ---------------------------------
-        # Supplier Validation
-        # ---------------------------------
+        subtotal = Decimal("0.00")
+        gst_total = Decimal("0.00")
 
-        supplier = self.supplier_repository.get(
-            supplier_id
-        )
-
-        if supplier is None:
-            raise SupplierNotFoundError(
-                f"Supplier {supplier_id} not found."
-            )
-
-        # ---------------------------------
-        # Create Purchase
-        # ---------------------------------
-
-        purchase = Purchase(
-            invoice_number=invoice_number,
-            supplier_id=supplier_id,
-            remarks=remarks,
-        )
-
-        total_amount = Decimal("0.00")
-
-        # ---------------------------------
-        # Purchase Items
-        # ---------------------------------
+        self.repo.create(purchase)
 
         for item in items:
 
-            product = self.product_repository.get(
-                item["product_id"]
-            )
-
-            if product is None:
-                raise ProductNotFoundError(
-                    f"Product {item['product_id']} not found."
-                )
-
-            quantity = Decimal(
-                str(item["quantity"])
-            )
-
-            rate = Decimal(
-                str(item["rate"])
-            )
-
-            gst_percent = Decimal(
-                str(
-                    item.get(
-                        "gst_percent",
-                        product.gst_percent,
-                    )
-                )
-            )
-
             purchase_item = PurchaseItem(
-                product_id=product.id,
-                quantity=quantity,
-                rate=rate,
-                gst_percent=gst_percent,
+
+                purchase_id=purchase.id,
+
+                product_id=item["product_id"],
+
+                quantity=item["quantity"],
+
+                free_quantity=item.get(
+                    "free_quantity",
+                    Decimal("0"),
+                ),
+
+                purchase_price=item["purchase_price"],
+
+                selling_price=item["selling_price"],
+
+                mrp=item["mrp"],
+
+                gst_percent=item["gst_percent"],
+
+                discount=item.get(
+                    "discount",
+                    Decimal("0"),
+                ),
+
+                total=item["total"],
             )
 
-            purchase.items.append(
+            self.session.add(
                 purchase_item
             )
 
-            total_amount += quantity * rate
+            subtotal += item["total"]
 
-            # -----------------------------
-            # Stock Transaction
-            # -----------------------------
+            gst_total += item["gst_amount"]
 
-            self.session.add(
-                StockTransaction(
-                    product_id=product.id,
-                    transaction_type=StockTransactionType.PURCHASE,
-                    quantity=quantity,
-                    reference=invoice_number,
-                    remarks="Purchase Invoice",
-                )
+            # ---------------------------------
+            # Create Batch
+            # ---------------------------------
+
+            batch = Batch(
+
+                product_id=item["product_id"],
+
+                batch_no=item["batch_no"],
+
+                manufacture_date=item.get(
+                    "manufacture_date"
+                ),
+
+                expiry_date=item.get(
+                    "expiry_date"
+                ),
+
+                purchase_rate=item[
+                    "purchase_price"
+                ],
+
+                sale_rate=item[
+                    "selling_price"
+                ],
+
+                mrp=item["mrp"],
+
+                available_qty=item["quantity"]
+                + item.get(
+                    "free_quantity",
+                    Decimal("0"),
+                ),
+
+                supplier_id=purchase.supplier_id,
+
+                purchase_id=purchase.id,
+
+                purchase_item_id=None,
             )
 
-        # ---------------------------------
-        # Save Purchase
-        # ---------------------------------
+            self.session.add(batch)
 
-        self.session.add(purchase)
-        self.session.flush()
+            self.session.flush()
 
-        # ---------------------------------
-        # Supplier Ledger
-        # ---------------------------------
+            # ---------------------------------
+            # Stock Entry
+            # ---------------------------------
 
-        self.ledger_service.supplier_purchase(
-            supplier_id=supplier_id,
-            amount=total_amount,
-            reference=invoice_number,
-            remarks="Purchase Invoice",
+            self.stock.purchase_stock(
+
+                product_id=item["product_id"],
+
+                batch_id=batch.id,
+
+                qty=batch.available_qty,
+
+                bill_no=purchase.invoice_no,
+            )
+
+        purchase.sub_total = subtotal
+
+        purchase.gst_total = gst_total
+
+        purchase.grand_total = (
+            subtotal + gst_total
         )
 
-        # ---------------------------------
-        # Commit
-        # ---------------------------------
-
         self.session.commit()
-        self.session.refresh(purchase)
 
         return purchase

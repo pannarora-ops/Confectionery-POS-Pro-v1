@@ -22,9 +22,11 @@ class CustomerService:
 
     def __init__(self, session):
 
-        self.repository = CustomerRepository(
-            session
-        )
+        self.repository = CustomerRepository(session)
+
+    # -------------------------------------------------
+    # Create Customer
+    # -------------------------------------------------
 
     def create_customer(
         self,
@@ -56,14 +58,48 @@ class CustomerService:
 
         return self.repository.add(customer)
 
-    def list_customers(self):
+    # -------------------------------------------------
+    # Get All Customers
+    # -------------------------------------------------
 
+    def get_all(self):
         return self.repository.list_all()
 
-    def get_customer(self, customer_id: int):
+    # Backward compatibility
 
+    def list_all(self):
+        return self.repository.list_all()
+
+    def list_customers(self):
+        return self.repository.list_all()
+
+    # -------------------------------------------------
+    # Get Customer
+    # -------------------------------------------------
+
+    def get(self, customer_id: int):
         return self.repository.get(customer_id)
 
-    def search(self, keyword: str):
+    def get_customer(self, customer_id: int):
+        return self.repository.get(customer_id)
 
+    # -------------------------------------------------
+    # Search
+    # -------------------------------------------------
+
+    def search(self, keyword: str):
         return self.repository.search(keyword)
+
+    # -------------------------------------------------
+    # Delete
+    # -------------------------------------------------
+
+    def delete(self, customer):
+        self.repository.delete(customer)
+
+    # -------------------------------------------------
+    # Save Changes
+    # -------------------------------------------------
+
+    def update(self):
+        self.repository.update()

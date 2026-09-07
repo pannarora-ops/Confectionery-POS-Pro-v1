@@ -1,50 +1,111 @@
 """
-Purchase repository.
+Purchase Repository
+Commercial POS Version
 """
 
-from sqlalchemy import select
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.models.purchase import Purchase
-from app.repositories.base_repository import BaseRepository
 
 
-class PurchaseRepository(BaseRepository[Purchase]):
-    """Repository for purchase operations."""
+class PurchaseRepository:
 
-    model = Purchase
+    def __init__(self, session: Session):
+        self.session = session
 
-    def get_by_invoice(
-        self,
-        invoice_number: str,
-    ) -> Purchase | None:
-        """
-        Return purchase by invoice number.
-        """
+    # -------------------------------------------------
+    # CRUD
+    # -------------------------------------------------
 
-        statement = (
-            select(Purchase)
-            .where(
-                Purchase.invoice_number
-                == invoice_number
-            )
+    def create(self, purchase: Purchase):
+
+        self.session.add(purchase)
+        self.session.flush()
+
+        return purchase
+
+    def update(self):
+        self.session.flush()
+
+    def delete(self, purchase: Purchase):
+        self.session.delete(purchase)
+
+    # -------------------------------------------------
+    # Get
+    # -------------------------------------------------
+
+    def get(self, purchase_id: int):
+
+        return (
+            self.session.query(Purchase)
+            .filter(Purchase.id == purchase_id)
+            .first()
         )
 
-        return self.session.execute(
-            statement
-        ).scalar_one_or_none()
+    def get_by_invoice(self, invoice_no: str):
 
-    # -----------------------------------------
-    # Backward Compatibility
-    # -----------------------------------------
+        return (
+            self.session.query(Purchase)
+            .filter(Purchase.invoice_no == invoice_no)
+            .first()
+        )
 
-    def find_by_invoice(
-        self,
-        invoice_number: str,
-    ) -> Purchase | None:
-        """
-        Alias for older service code.
-        """
+    # -------------------------------------------------
+    # Listing
+    # -------------------------------------------------
 
-        return self.get_by_invoice(
-            invoice_number
+    def get_all(self):
+
+        return (
+            self.session.query(Purchase)
+            .order_by(Purchase.purchase_date.desc())
+            .all()
+        )
+
+    # -------------------------------------------------
+    # Purchase Number Generator
+    # -------------------------------------------------
+
+    def generate_purchase_no(self):
+
+        year = datetime.now().strftime("%y")
+
+        prefix = f"PUR{year}"
+
+        last = (
+            self.session.query(
+                func.max(Purchase.id)
+            ).scalar()
+        )
+
+        if not last:
+            return f"{prefix}000001"
+
+        return f"{prefix}{last + 1:06d}"
+
+    # -------------------------------------------------
+    # Search
+    # -------------------------------------------------
+
+    def search(self, text: str):
+
+        if not text:
+            return self.get_all()
+
+        text = f"%{text}%"
+
+        return (
+            self.session.query(Purchase)
+            .filter(
+                Purchase.invoice_no.ilike(text)
+            )
+            .order_by(
+                Purchase.purchase_date.desc()
+            )
+            .all()
         )

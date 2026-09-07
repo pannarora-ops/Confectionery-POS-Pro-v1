@@ -1,102 +1,91 @@
 """
-Payment model.
+Payment Model
 """
+
+from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 
 from sqlalchemy import (
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
+    Integer,
     Numeric,
     String,
+    Text,
 )
+
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     relationship,
 )
 
-from app.models.base_model import BaseModel
+from app.database.base import Base
 
 
-class PaymentType(str, Enum):
-    CUSTOMER = "CUSTOMER"
-    SUPPLIER = "SUPPLIER"
-
-
-class PaymentMode(str, Enum):
-    CASH = "CASH"
-    UPI = "UPI"
-    CARD = "CARD"
-    BANK = "BANK"
-
-
-class Payment(BaseModel):
-    """Customer/Supplier payment."""
-
+class Payment(Base):
     __tablename__ = "payments"
 
-    payment_type: Mapped[PaymentType] = mapped_column(
-        SqlEnum(PaymentType),
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    sale_id: Mapped[int] = mapped_column(
+        ForeignKey("sales.id", ondelete="CASCADE"),
         nullable=False,
-    )
-
-    customer_id: Mapped[int | None] = mapped_column(
-        ForeignKey("customers.id"),
-        nullable=True,
-    )
-
-    supplier_id: Mapped[int | None] = mapped_column(
-        ForeignKey("suppliers.id"),
-        nullable=True,
-    )
-
-    amount: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2),
-        nullable=False,
-    )
-
-    payment_mode: Mapped[PaymentMode] = mapped_column(
-        SqlEnum(PaymentMode),
-        default=PaymentMode.CASH,
-        nullable=False,
-    )
-
-    reference_number: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-    )
-
-    remarks: Mapped[str | None] = mapped_column(
-        String(300),
-        nullable=True,
+        index=True,
     )
 
     payment_date: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=datetime.now,
+    )
+
+    payment_mode: Mapped[str] = mapped_column(
+        String(30),
         nullable=False,
     )
 
-    # -------------------------
-    # Relationships
-    # -------------------------
-
-    customer = relationship(
-        "Customer",
-        back_populates="payments",
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        nullable=False,
+        default=0,
     )
 
-    supplier = relationship(
-        "Supplier",
-        back_populates="payments",
+    reference_no: Mapped[str | None] = mapped_column(
+        String(100),
     )
 
-    def __repr__(self) -> str:
-        return (
-            f"<Payment(id={self.id}, "
-            f"amount={self.amount})>"
-        )
+    transaction_id: Mapped[str | None] = mapped_column(
+        String(100),
+    )
+
+    bank_name: Mapped[str | None] = mapped_column(
+        String(100),
+    )
+
+    card_last4: Mapped[str | None] = mapped_column(
+        String(4),
+    )
+
+    approval_code: Mapped[str | None] = mapped_column(
+        String(50),
+    )
+
+    payment_status: Mapped[str] = mapped_column(
+        String(20),
+        default="Success",
+    )
+
+    remarks: Mapped[str | None] = mapped_column(
+        Text,
+    )
+
+    sale = relationship(
+        "Sale",
+        back_populates="payments",
+    )

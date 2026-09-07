@@ -1,25 +1,55 @@
 """
-Sale model.
+Sale Model
 """
+
+from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 
-from app.models.base_model import BaseModel
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
+
+from app.database.base import Base
 
 
-class Sale(BaseModel):
-    """Sales invoice."""
-
+class Sale(Base):
     __tablename__ = "sales"
 
-    invoice_number: Mapped[str] = mapped_column(
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    invoice_no: Mapped[str] = mapped_column(
         String(30),
         unique=True,
         nullable=False,
+        index=True,
+    )
+
+    invoice_type: Mapped[str] = mapped_column(
+        String(20),
+        default="Retail",
+    )
+
+    sale_date: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
     )
 
     customer_id: Mapped[int | None] = mapped_column(
@@ -27,29 +57,93 @@ class Sale(BaseModel):
         nullable=True,
     )
 
-    customer_name: Mapped[str | None] = mapped_column(
-        String(150),
+    cashier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
         nullable=True,
+    )
+
+    gross_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    discount_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    taxable_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    cgst_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    sgst_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    igst_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    cess_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    round_off: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    grand_total: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    received_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    balance_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12,2),
+        default=0,
+    )
+
+    loyalty_earned: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+    )
+
+    loyalty_redeemed: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+    )
+
+    payment_status: Mapped[str] = mapped_column(
+        String(20),
+        default="Paid",
+    )
+
+    sale_status: Mapped[str] = mapped_column(
+        String(20),
+        default="Completed",
     )
 
     remarks: Mapped[str | None] = mapped_column(
-        String(300),
-        nullable=True,
+        Text,
     )
 
-    sale_date: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        nullable=False,
-    )
-
-    # -------------------------
-    # Relationships
-    # -------------------------
-
-    customer = relationship(
-        "Customer",
-        back_populates="sales",
+    is_hold: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
     )
 
     items = relationship(
@@ -58,25 +152,8 @@ class Sale(BaseModel):
         cascade="all, delete-orphan",
     )
 
-    @property
-    def subtotal(self) -> Decimal:
-        return sum(
-            (item.amount for item in self.items),
-            Decimal("0.00"),
-        )
-
-    @property
-    def gst_total(self) -> Decimal:
-        return sum(
-            (item.gst_amount for item in self.items),
-            Decimal("0.00"),
-        )
-
-    @property
-    def grand_total(self) -> Decimal:
-        return self.subtotal + self.gst_total
-
-    def __repr__(self) -> str:
-        return (
-            f"<Sale(invoice='{self.invoice_number}')>"
-        )
+    payments = relationship(
+        "Payment",
+        back_populates="sale",
+        cascade="all, delete-orphan",
+    )
